@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LEXGROUP - Roue fonctionnelle</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #2c3e50, #4f6272);
+    color: #e74c3c;
+    max-width: 480px;
+    margin: 40px auto;
+    text-align: center;
+  }
+  #wheel-container {
+    margin: 20px auto;
+    position: relative;
+    width: 400px; height: 400px;
+    display: none;
+  }
+  #pointer {
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    margin-left: -20px;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 40px solid #e74c3c;
+    z-index: 10;
+  }
+  canvas {
+    background: #34495e;
+    border-radius: 50%;
+  }
+  button {
+    padding: 15px 30px;
+    font-size: 18px;
+    margin: 10px;
+    cursor: pointer;
+    border: 2px solid #e74c3c;
+    background: #34495e;
+    color: #e74c3c;
+    border-radius: 30px;
+    font-weight: bold;
+  }
+  button:disabled {
+    color: #aaa;
+    border-color: #aaa;
+    cursor: not-allowed;
+  }
+  #result {
+    margin-top: 30px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #e74c3c;
+    min-height: 40px;
+  }
+</style>
+</head>
+<body>
+
+<h2>LEXGROUP – Corinne Sempere</h2>
+<h1>🎉 Tentez votre chance !</h1>
+
+<button id="googleReviewBtn">📝 Mettre un avis sur Google</button>
+<button id="spinBtn" disabled>✅ J'ai mis mon avis, je tourne la roue</button>
+
+<div id="wheel-container">
+  <div id="pointer"></div>
+  <canvas id="wheel" width="400" height="400"></canvas>
+</div>
+
+<div id="result"></div>
+
+<script>
+  const prizes = [
+    "✒️ Stylo LEXGROUP",
+    "📒 Bloc-notes",
+    "🎁 Surprise notariale",
+    "🙁 Pas de chance",
+    "☕ Pause café",
+    "📚 Guide juridique",
+    "🍀 Bonne chance !",
+    "🗂️ Dossier offert"
+  ];
+
+  const colors = ['#c0392b', '#922b21'];
+
+  const googleReviewBtn = document.getElementById('googleReviewBtn');
+  const spinBtn = document.getElementById('spinBtn');
+  const wheelContainer = document.getElementById('wheel-container');
+  const canvas = document.getElementById('wheel');
+  const ctx = canvas.getContext('2d');
+  const resultDiv = document.getElementById('result');
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 180;
+  const arc = (2 * Math.PI) / prizes.length;
+
+  let startAngle = 0;
+  let isSpinning = false;
+
+  function drawWheel() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textBaseline = 'middle';
+
+    for(let i=0; i < prizes.length; i++){
+      const angle = startAngle + i*arc;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, angle, angle + arc);
+      ctx.lineTo(centerX, centerY);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      ctx.font = "bold 12px Arial";
+      ctx.translate(centerX + Math.cos(angle + arc/2)*120, centerY + Math.sin(angle + arc/2)*120);
+      ctx.rotate(angle + arc/2 + Math.PI/2);
+      ctx.textAlign = "center";
+
+      // Découpe simple du texte en deux lignes
+      let text = prizes[i];
+      let splitText = text.split(' ');
+      let line1 = '';
+      let line2 = '';
+      if(splitText.length > 2){
+        line1 = splitText.slice(0, Math.ceil(splitText.length/2)).join(' ');
+        line2 = splitText.slice(Math.ceil(splitText.length/2)).join(' ');
+      } else {
+        line1 = splitText[0];
+        line2 = splitText.slice(1).join(' ');
+      }
+
+      ctx.fillText(line1, 0, -8);
+      if(line2) ctx.fillText(line2, 0, 8);
+
+      ctx.restore();
+    }
+
+    // cercle central
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 60, 0, 2*Math.PI);
+    ctx.fillStyle = '#922b21';
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Tourner', centerX, centerY + 6);
+  }
+
+  function easeOut(t, b, c, d) {
+    t /= d;
+    t--;
+    return c*(t*t*t + 1) + b;
+  }
+
+  function spin(){
+    if(isSpinning) return;
+    isSpinning = true;
+    resultDiv.textContent = '';
+    spinBtn.disabled = true;
+    googleReviewBtn.disabled = true;
+    wheelContainer.style.display = 'block';
+
+    const spinDuration = 4000; // ms
+    const spinStart = performance.now();
+    const spinAngleStart = Math.random() * 10 + 15;
+
+    function animate(time){
+      let elapsed = time - spinStart;
+      if(elapsed > spinDuration){
+        isSpinning = false;
+        // calculer le résultat
+        let degrees = startAngle * 180 / Math.PI;
+        degrees = (degrees % 360 + 360) % 360; // 0-360
+        const pointer = 270;
+        const segment = 360 / prizes.length;
+        let relative = (pointer - degrees + 360) % 360;
+        let index = Math.floor(relative / segment);
+        resultDiv.textContent = "🎉 Vous avez gagné : " + prizes[index];
+        return;
+      }
+      const angle = easeOut(elapsed, spinAngleStart, -spinAngleStart, spinDuration);
+      startAngle += angle * Math.PI / 180;
+      drawWheel();
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  }
+
+  googleReviewBtn.onclick = () => {
+    window.open('https://www.google.com/search?q=avis+sur+corinne+sempere', '_blank');
+    spinBtn.disabled = false;
+  };
+
+  spinBtn.onclick = spin;
+
+  drawWheel();
+</script>
+
+</body>
+</html>
